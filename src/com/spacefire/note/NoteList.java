@@ -1,10 +1,14 @@
 package com.spacefire.note;
 
 import android.os.Bundle;
+import android.preference.PreferenceManager;
 import android.app.AlertDialog;
 import android.app.ListActivity;
+import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.content.SharedPreferences;
+import android.content.SharedPreferences.OnSharedPreferenceChangeListener;
 import android.database.Cursor;
 import android.view.ContextMenu;
 import android.view.ContextMenu.ContextMenuInfo;
@@ -26,10 +30,25 @@ public class NoteList extends ListActivity {
 	private int mNoteNumber = 1;
 	
 	private SFDB mDbHelper;
+	
+	public static Boolean scheduledRestart = false;
+	SharedPreferences preferences;
+	private OnSharedPreferenceChangeListener listener;
+	public static int themeId;
 		
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
-		super.onCreate(savedInstanceState);
+		preferences = getSharedPreferences("MemoSettings",Context.MODE_PRIVATE);
+		preferences = PreferenceManager.getDefaultSharedPreferences(this);
+		listener = new SharedPreferences.OnSharedPreferenceChangeListener() {
+		 @Override
+		 public void onSharedPreferenceChanged(SharedPreferences prefs,
+		 String key) {
+			 changeTheme();
+		 }
+		 };
+        setTheme(MemoSettings.themeId);              	
+		super.onCreate(savedInstanceState);	
 		setContentView(R.layout.notelist);
 		mDbHelper = new SFDB (this);
 		mDbHelper.open();
@@ -74,11 +93,14 @@ public class NoteList extends ListActivity {
 	        	   }
 	           });
 	           dialog.show();	           
-	           return true;
-	        
-	        default:
-	            return super.onOptionsItemSelected(item);
-	        }
+	           return true;	       
+    case R.id.menu_settings:
+    	 Intent preference = new Intent(this, MemoSettings.class);
+	   startActivity(preference);                    
+        return true; 
+    default:
+        return super.onOptionsItemSelected(item);
+    }        
 	    }
 	
 	private void createNote() {
@@ -134,4 +156,35 @@ public class NoteList extends ListActivity {
         fillData();        
     }   
     
+	 private void changeTheme()
+	 { 
+	 preferences = PreferenceManager.getDefaultSharedPreferences(this);
+	 String pref_Theme = preferences.getString("pref_Theme", "");	 
+	 if (pref_Theme.trim().equalsIgnoreCase("NoTitleBar"))
+	 {
+		 NoteList.scheduledRestart = true;
+	 themeId = R.style.AppBaseTheme3; 
+	 }
+	 else if (pref_Theme.trim().equalsIgnoreCase("Light"))
+	 {
+		 NoteList.scheduledRestart = true;
+	 themeId = R.style.AppBaseTheme;
+	 }
+	 else if (pref_Theme.trim().equalsIgnoreCase("Dark"))
+	 {
+     NoteList.scheduledRestart = true;
+	 themeId = R.style.AppBaseTheme2;
+	 } 
+	 }  
+	 
+		@Override
+		 protected void onResume() {
+		 super.onResume();
+		 if(scheduledRestart)
+		 {
+		 scheduledRestart = false;
+		this.finish();
+		this.startActivity(new Intent(this, this.getClass())); 
+		 }
+		 }	 
 }
